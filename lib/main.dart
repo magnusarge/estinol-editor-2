@@ -10,21 +10,59 @@ import 'screens/login_screen.dart';
 import 'screens/editor_screen.dart'; // Loome selle hiljem
 
 void main() async {
-  // Vajalik, kuna initsialiseerime Firebase'i enne runApp() käivitamist
   WidgetsFlutterBinding.ensureInitialized();
   
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    // Proovime Firebase'i käima panna
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => DictionaryProvider()),
-      ],
-      child: const EstinolApp(),
-    ),
-  );
+    // Kui õnnestus, käivitame põhiprogrammi
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => DictionaryProvider()),
+        ],
+        child: const EstinolApp(),
+      ),
+    );
+  } catch (e, stackTrace) {
+    // KUI MIDAGI LÄHEB VALESTI, ÄRA SULGE AKENT, VAID NÄITA VIGA!
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(title: const Text('Kriitiline viga käivitamisel')),
+          body: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Programm jooksis käivitamisel kokku järgmise veaga:',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
+                  ),
+                  const SizedBox(height: 16),
+                  SelectableText(
+                    e.toString(),
+                    style: const TextStyle(fontSize: 16, fontFamily: 'monospace'),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Stack trace:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    stackTrace.toString(),
+                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class EstinolApp extends StatelessWidget {
