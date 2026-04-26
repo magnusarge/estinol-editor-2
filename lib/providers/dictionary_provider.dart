@@ -40,6 +40,17 @@ class DictionaryProvider with ChangeNotifier {
   bool _isAddingNew = false;
   bool get isAddingNew => _isAddingNew;
 
+  bool _hasUnsavedChanges = false;
+  bool get hasUnsavedChanges => _hasUnsavedChanges;
+
+  void setUnsavedChanges(bool value) {
+    if (_hasUnsavedChanges != value) {
+      _hasUnsavedChanges = value;
+      // Kasutame microtaski, et vältida build-faasi ajal uuendamise viga
+      Future.microtask(() => notifyListeners());
+    }
+  }
+
   void togglePreview() {
     _showPreview = !_showPreview;
     notifyListeners();
@@ -47,7 +58,8 @@ class DictionaryProvider with ChangeNotifier {
 
   void selectWord(Word? word) {
     _selectedWord = word;
-    _isAddingNew = false; // Kui valime nimekirjast sõna, siis me ei lisa uut
+    _isAddingNew = false;
+    _hasUnsavedChanges = false; // Nullime staatuse
     notifyListeners();
   }
 
@@ -55,6 +67,7 @@ class DictionaryProvider with ChangeNotifier {
   void startAddingNewWord() {
     _selectedWord = null;
     _isAddingNew = true;
+    _hasUnsavedChanges = false; // Nullime staatuse
     notifyListeners();
   }
 
@@ -107,13 +120,24 @@ class DictionaryProvider with ChangeNotifier {
   Future<void> addOrUpdateWord(Word word) async {
     await _dbService.saveWord(_currentLang, word);
     
-    // Uuendame mälus olevat nimekirja ilma uuesti serverist tõmbamata
     int index = _words.indexWhere((w) => w.id == word.id);
     if (index != -1) {
       _words[index] = word;
     } else {
       _words.add(word);
     }
+    
+    _hasUnsavedChanges = false;
+    _selectedWord = word; // Pärast salvestamist jääb sõna valituks
+    _isAddingNew = false;
+    notifyListeners();
+  }
+
+  Future<void> deleteWord(Word word) async {
+    await _dbService.deleteWord(_currentLang, word);
+    _words.removeWhere((w) => w.id == word.id);
+    _selectedWord = null;
+    _hasUnsavedChanges = false;
     notifyListeners();
   }
 }

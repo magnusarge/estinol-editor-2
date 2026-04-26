@@ -20,34 +20,142 @@ class _WordEditorState extends State<WordEditor> {
   int _raskusaste = 0;
   String _currentId = '';
 
-  // --- LISATUD: Uuendab reaalajas eelvaadet ---
+  bool _isDuplicate = false;
+
   @override
   void initState() {
     super.initState();
-    _sisuController.addListener(() {
-      setState(() {}); 
-    });
+    _algvormController.addListener(_checkChangesAndDuplicates);
+    _sisuController.addListener(_checkChangesAndDuplicates);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final word = context.watch<DictionaryProvider>().selectedWord;
+    final provider = context.watch<DictionaryProvider>();
+    final word = provider.selectedWord;
+    
+    // Uuendame lahtreid ainult siis, kui sõna reaalselt vahetus
     if (word != null && word.id != _currentId) {
       _currentId = word.id;
       _algvormController.text = word.algvorm;
       _otsingVController.text = word.otsingVorm;
       _sisuController.text = word.sisuMd;
       _raskusaste = word.raskusaste;
-    } else if (word == null) {
+      _isDuplicate = false;
+    } else if (word == null && !provider.isAddingNew) {
       _currentId = '';
+    } else if (word == null && provider.isAddingNew && _currentId != 'NEW') {
+      _currentId = 'NEW';
       _algvormController.clear();
       _otsingVController.clear();
       _sisuController.clear();
       _raskusaste = 0;
+      _isDuplicate = false;
     }
   }
 
+  @override
+  void dispose() {
+    _algvormController.dispose();
+    _otsingVController.dispose();
+    _sisuController.dispose();
+    super.dispose();
+  }
+
+  // --- KONTROLLID (Duplikaadid ja Salvestamata muudatused) ---
+  void _checkChangesAndDuplicates() {
+    final provider = context.read<DictionaryProvider>();
+    final word = provider.selectedWord;
+
+    // 1. Duplikaadi kontroll (ainult uue sõna lisamisel)
+    if (provider.isAddingNew) {
+      final input = _algvormController.text.trim().toLowerCase();
+      final duplicateExists = provider.words.any((w) => w.algvorm.toLowerCase() == input);
+      if (_isDuplicate != duplicateExists) {
+        setState(() => _isDuplicate = duplicateExists);
+      }
+    }
+
+    // 2. Salvestamata muudatuste kontroll (võrdleme algseisuga)
+    bool isDirty = false;
+    if (provider.isAddingNew) {
+      isDirty = _algvormController.text.isNotEmpty || _sisuController.text.isNotEmpty;
+    } else if (word != null) {
+      isDirty = _algvormController.text != word.algvorm ||
+                _sisuController.text != word.sisuMd ||
+                _raskusaste != word.raskusaste;
+    }
+    provider.setUnsavedChanges(isDirty);
+    
+    // Markdowni reaalajas eelvaate uuendamiseks
+    setState(() {});
+  }
+
+  // --- NUPPUDE TEGEVUSED ---
+  void _saveForm() {
+    final provider = context.read<DictionaryProvider>();
+    final isNew = provider.isAddingNew;
+
+    final word = Word(
+      id: isNew ? 'word_${DateTime.now().millisecondsSinceEpoch}' : _currentId,
+      algvorm: _algvormController.text.trim(),
+      otsingVorm: _otsingVController.text.trim(),
+      sisuMd: _sisuController.text.trim(),
+      raskusaste: _raskusaste,
+      viimatiMuudetud: DateTime.now(),
+    );
+
+    provider.addOrUpdateWord(word);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sõna edukalt salvestatud!'), backgroundColor: Colors.green),
+    );
+  }
+
+  void _cancelEditing() {
+    final provider = context.read<DictionaryProvider>();
+    // Tühistame muudatused laadides eelmise sõna uuesti või tühjendades uue sõna vormi
+    if (provider.isAddingNew) {
+      provider.startAddingNewWord(); 
+    } else {
+      provider.selectWord(provider.selectedWord); 
+      // Sunnime lahtrid uuesti väärtusi võtma
+      setState(() { _currentId = ''; }); 
+    }
+  }
+
+  Future<void> _deleteWord() async {
+    final provider = context.read<DictionaryProvider>();
+    final word = provider.selectedWord;
+    if (word == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kustuta sõna'),
+        content: Text('Kas oled kindel, et soovid sõna "${word.algvorm}" kustutada? Seda tegevust ei saa tagasi võtta.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Tühista')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text('Kustuta'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await provider.deleteWord(word);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sõna kustutatud.')),
+        );
+      }
+    }
+  }
+
+  // ... [siia vahele jääb _applyMarkdown funktsioon täpselt samana nagu enne] ...
   void _applyMarkdown(String prefix, String suffix) {
     final text = _sisuController.text;
     final selection = _sisuController.selection;
@@ -65,10 +173,25 @@ class _WordEditorState extends State<WordEditor> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DictionaryProvider>();
-    final isNew = provider.selectedWord == null;
+    final isNew = provider.isAddingNew;
 
     return Column(
       children: [
+        // --- HOIATUS DUPLIKAADI KORRAL ---
+        if (_isDuplicate)
+          Container(
+            padding: const EdgeInsets.all(8),
+            margin: const EdgeInsets.only(bottom: 16),
+            color: Colors.red.shade100,
+            child: const Row(
+              children: [
+                Icon(Icons.warning, color: Colors.red),
+                SizedBox(width: 8),
+                Text('See sõna on juba sõnastikus olemas!', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+
         // Sisestusväljad
         Row(
           children: [
@@ -78,7 +201,9 @@ class _WordEditorState extends State<WordEditor> {
                 enabled: isNew,
                 decoration: const InputDecoration(labelText: 'Algvorm'),
                 onChanged: (val) {
-                  if (isNew) _otsingVController.text = StringUtils.normalize(val);
+                  if (isNew) {
+                    _otsingVController.text = StringUtils.normalize(val);
+                  }
                 },
               ),
             ),
@@ -103,7 +228,10 @@ class _WordEditorState extends State<WordEditor> {
             ButtonSegment(value: 3, label: Text('Raske')),
           ],
           selected: {_raskusaste},
-          onSelectionChanged: (val) => setState(() => _raskusaste = val.first),
+          onSelectionChanged: (val) {
+            setState(() => _raskusaste = val.first);
+            _checkChangesAndDuplicates();
+          },
         ),
         const SizedBox(height: 16),
 
@@ -148,7 +276,7 @@ class _WordEditorState extends State<WordEditor> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     padding: const EdgeInsets.all(8),
-                    child: Markdown(data: _sisuController.text),
+                    child: MarkdownBody(data: _sisuController.text),
                   ),
                 ),
               ],
@@ -156,14 +284,39 @@ class _WordEditorState extends State<WordEditor> {
           ),
         ),
         
-        // Salvestamise nupp
+        // --- ALUMINE NUPPUDE RIDA ---
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: ElevatedButton(
-            onPressed: () {
-              // TODO: Salvestamise loogika
-            },
-            child: const Text('Salvesta muudatused'),
+          padding: const EdgeInsets.only(top: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // Kustuta nupp (nähtav ainult olemasoleva sõna muutmisel)
+              if (!isNew)
+                TextButton.icon(
+                  onPressed: _deleteWord,
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  label: const Text('Kustuta', style: TextStyle(color: Colors.red)),
+                ),
+              const Spacer(),
+              // Katkesta nupp
+              if (provider.hasUnsavedChanges)
+                TextButton(
+                  onPressed: _cancelEditing,
+                  child: const Text('Katkesta'),
+                ),
+              const SizedBox(width: 16),
+              // Salvesta nupp
+              ElevatedButton.icon(
+                // Nupp on inaktiivne, kui on duplikaat või algvorm on tühi
+                onPressed: _isDuplicate || _algvormController.text.trim().isEmpty ? null : _saveForm,
+                icon: const Icon(Icons.save),
+                label: const Text('Salvesta muudatused'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                ),
+              ),
+            ],
           ),
         ),
       ],

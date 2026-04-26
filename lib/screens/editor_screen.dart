@@ -44,6 +44,38 @@ class _EditorScreenState extends State<EditorScreen> {
     super.dispose();
   }
 
+  // --- SALVESTAMATA MUUDATUSTE KAITSE ---
+  Future<bool> _canProceed() async {
+    final provider = context.read<DictionaryProvider>();
+    if (!provider.hasUnsavedChanges) return true; // Kui muudatusi pole, luba minna
+
+    // Kui on muudatusi, küsime kasutajalt kinnitust
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Salvestamata muudatused'),
+        content: const Text('Sul on salvestamata muudatusi. Kas soovid jätkata ja muudatused kaotada?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false), // Ei jätka
+            child: const Text('Tagasi toimetama'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(context, true), // Jätka ja kaota muudatused
+            child: const Text('Jätka ja kaota muudatused'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      provider.setUnsavedChanges(false); // Nullime lipu
+      return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DictionaryProvider>();
@@ -64,7 +96,9 @@ class _EditorScreenState extends State<EditorScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => FirebaseAuth.instance.signOut(),
+            onPressed: () async {
+              if (await _canProceed()) FirebaseAuth.instance.signOut();
+            },
             tooltip: 'Logi välja',
           ),
           const SizedBox(width: 16),
@@ -93,8 +127,10 @@ class _EditorScreenState extends State<EditorScreen> {
                             ElevatedButton.icon(
                               icon: const Icon(Icons.swap_horiz),
                               label: Text(provider.currentLang == 'es' ? '🇪🇸 ES' : '🇪🇪 ET'),
-                              onPressed: () {
-                                provider.switchLanguage(provider.currentLang == 'es' ? 'et' : 'es');
+                              onPressed: () async {
+                                if (await _canProceed()) {
+                                  provider.switchLanguage(provider.currentLang == 'es' ? 'et' : 'es');
+                                }
                               },
                             ),
                             ElevatedButton.icon(
@@ -104,8 +140,10 @@ class _EditorScreenState extends State<EditorScreen> {
                                 backgroundColor: colorScheme.primary,
                                 foregroundColor: colorScheme.onPrimary,
                               ),
-                              onPressed: () {
-                                provider.startAddingNewWord();
+                              onPressed: () async {
+                                if (await _canProceed()) {
+                                  provider.startAddingNewWord();
+                                }
                               },
                             ),
                           ],
@@ -122,7 +160,11 @@ class _EditorScreenState extends State<EditorScreen> {
                             final hasWords = count > 0;
 
                             return InkWell(
-                              onTap: () => provider.setSelectedLetter(letter),
+                              onTap: () async {
+                                if (await _canProceed()) {
+                                  provider.setSelectedLetter(letter);
+                                }
+                              },
                               borderRadius: BorderRadius.circular(4),
                               child: Container(
                                 width: 32,
@@ -159,7 +201,11 @@ class _EditorScreenState extends State<EditorScreen> {
                               return ListTile(
                                 title: Text(word.algvorm, style: const TextStyle(fontWeight: FontWeight.bold)),
                                 subtitle: Text(word.otsingVorm, style: TextStyle(color: Colors.grey.shade600)),
-                                onTap: () => provider.selectWord(word),
+                                onTap: () async {
+                                  if (await _canProceed()) {
+                                    provider.selectWord(word);
+                                  }
+                                },
                               );
                             },
                           ),
