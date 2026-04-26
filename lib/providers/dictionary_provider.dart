@@ -117,6 +117,7 @@ class DictionaryProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Sõna salvestamine (uue või olemasoleva)
   Future<void> addOrUpdateWord(Word word) async {
     await _dbService.saveWord(_currentLang, word);
     
@@ -127,6 +128,15 @@ class DictionaryProvider with ChangeNotifier {
       _words.add(word);
     }
     
+    // --- LISATUD: Muudame vasaku tulba aktiivse tähe vastavaks ---
+    if (word.algvorm.isNotEmpty) {
+      String firstLetter = word.algvorm[0].toLowerCase();
+      // Kontrollime igaks juhuks, kas see täht on antud keele tähestikus olemas
+      if (currentAlphabet.contains(firstLetter)) {
+        _selectedLetter = firstLetter;
+      }
+    }
+
     _hasUnsavedChanges = false;
     _selectedWord = word; // Pärast salvestamist jääb sõna valituks
     _isAddingNew = false;
