@@ -239,8 +239,7 @@ class _WordEditorState extends State<WordEditor> {
         Row(
           children: [
             IconButton(onPressed: () => _applyMarkdown('**', '**'), icon: const Icon(Icons.format_bold)),
-            IconButton(onPressed: () => _applyMarkdown('_', '_'), icon: const Icon(Icons.format_italic)),
-            IconButton(onPressed: () => _applyMarkdown('~~', '~~'), icon: const Icon(Icons.format_strikethrough)),
+            IconButton(onPressed: () => _applyMarkdown('*', '*'), icon: const Icon(Icons.format_italic)),
             const Spacer(),
             TextButton.icon(
               onPressed: provider.togglePreview,
