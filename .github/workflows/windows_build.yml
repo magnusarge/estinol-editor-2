@@ -1,7 +1,7 @@
 name: Build Windows Release
 
 on:
-  workflow_dispatch: # See võimaldab buildi GitHubi lehelt käsitsi käivitada
+  workflow_dispatch:
 
 jobs:
   build:
@@ -15,6 +15,13 @@ jobs:
       uses: subosito/flutter-action@v2
       with:
         channel: 'stable'
+
+    - name: Create firebase_options.dart
+      run: |
+        New-Item -ItemType Directory -Force -Path lib
+        Set-Content -Path lib\firebase_options.dart -Value $env:FIREBASE_OPTIONS_DATA
+      env:
+        FIREBASE_OPTIONS_DATA: ${{ secrets.FIREBASE_OPTIONS_DART }}
 
     - name: Install dependencies
       run: flutter pub get
