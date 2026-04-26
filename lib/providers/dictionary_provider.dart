@@ -137,9 +137,16 @@ class DictionaryProvider with ChangeNotifier {
   // Keele vahetamine ja uute andmete laadimine
   Future<void> switchLanguage(String lang) async {
     _currentLang = lang;
-    _selectedLetter = 'a'; // Resetib tähe
+    _selectedLetter = 'a';
+    
+    // --- LISATUD PARANDUS ---
+    _selectedWord = null;      // Eemaldame valitud sõna fookusest
+    _isAddingNew = false;      // Igaks juhuks tühistame ka uue sõna lisamise
+    _hasUnsavedChanges = false; // Nullime muudatuste staatuse
+    
     _calculateLastModified();
     await loadDictionary();
+    notifyListeners(); // Teavitame UI-d, et pilt puhtaks löödaks
   }
 
   Future<void> loadDictionary() async {

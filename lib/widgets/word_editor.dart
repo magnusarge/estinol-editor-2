@@ -21,6 +21,7 @@ class _WordEditorState extends State<WordEditor> {
   String _currentId = '';
 
   bool _isDuplicate = false;
+  bool _isLoadingData = false;
 
   @override
   void initState() {
@@ -35,23 +36,38 @@ class _WordEditorState extends State<WordEditor> {
     final provider = context.watch<DictionaryProvider>();
     final word = provider.selectedWord;
     
-    // Uuendame lahtreid ainult siis, kui sõna reaalselt vahetus
     if (word != null && word.id != _currentId) {
+      _isLoadingData = true; // ALUSTAME LAADIMIST
+      
       _currentId = word.id;
       _algvormController.text = word.algvorm;
       _otsingVController.text = word.otsingVorm;
       _sisuController.text = word.sisuMd;
       _raskusaste = word.raskusaste;
       _isDuplicate = false;
+
+      // Kasutame lühikest viivitust, et kuulajad jõuaksid "vaikida"
+      Future.microtask(() {
+        _isLoadingData = false;
+        // Pärast laadimist kinnitame, et andmed on puhtad
+        context.read<DictionaryProvider>().setUnsavedChanges(false);
+      });
+      
     } else if (word == null && !provider.isAddingNew) {
       _currentId = '';
     } else if (word == null && provider.isAddingNew && _currentId != 'NEW') {
+      _isLoadingData = true;
       _currentId = 'NEW';
       _algvormController.clear();
       _otsingVController.clear();
       _sisuController.clear();
       _raskusaste = 0;
       _isDuplicate = false;
+      
+      Future.microtask(() {
+        _isLoadingData = false;
+        context.read<DictionaryProvider>().setUnsavedChanges(false);
+      });
     }
   }
 
@@ -65,10 +81,13 @@ class _WordEditorState extends State<WordEditor> {
 
   // --- KONTROLLID (Duplikaadid ja Salvestamata muudatused) ---
   void _checkChangesAndDuplicates() {
+    // KUI LAADIMINE KÄIB, SIIS ME EI KONTROLLI MUUDATUSI
+    if (_isLoadingData) return; 
+
     final provider = context.read<DictionaryProvider>();
     final word = provider.selectedWord;
 
-    // 1. Duplikaadi kontroll (ainult uue sõna lisamisel)
+    // 1. Duplikaadi kontroll
     if (provider.isAddingNew) {
       final input = _algvormController.text.trim().toLowerCase();
       final duplicateExists = provider.words.any((w) => w.algvorm.toLowerCase() == input);
@@ -77,7 +96,7 @@ class _WordEditorState extends State<WordEditor> {
       }
     }
 
-    // 2. Salvestamata muudatuste kontroll (võrdleme algseisuga)
+    // 2. Salvestamata muudatuste kontroll
     bool isDirty = false;
     if (provider.isAddingNew) {
       isDirty = _algvormController.text.isNotEmpty || _sisuController.text.isNotEmpty;
@@ -86,9 +105,8 @@ class _WordEditorState extends State<WordEditor> {
                 _sisuController.text != word.sisuMd ||
                 _raskusaste != word.raskusaste;
     }
-    provider.setUnsavedChanges(isDirty);
     
-    // Markdowni reaalajas eelvaate uuendamiseks
+    provider.setUnsavedChanges(isDirty);
     setState(() {});
   }
 
