@@ -116,11 +116,23 @@ class _EditorScreenState extends State<EditorScreen> {
       ),
 
       // --- PÕHISISU (KAKS TULPA) ---
-      body: provider.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+      body: provider.errorMessage.isNotEmpty
+          // KUI ON VIGA, NÄITAME SEDA PUNASELT EES:
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Text(
+                  provider.errorMessage, 
+                  style: const TextStyle(color: Colors.red, fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          : provider.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                 // === 1. TULP ===
                 Expanded(
                   flex: 3,

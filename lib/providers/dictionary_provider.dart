@@ -5,6 +5,9 @@ import '../services/database_service.dart';
 
 class DictionaryProvider with ChangeNotifier {
   final DatabaseService _dbService = DatabaseService();
+
+  String _errorMessage = '';
+  String get errorMessage => _errorMessage;
   
   List<Word> _words = [];
   String _currentLang = 'es'; // Vaikimisi hispaania
@@ -54,9 +57,13 @@ class DictionaryProvider with ChangeNotifier {
   }
 
   void _initChangesListener() {
+    // Lisame .listen külge onError käsitleja
     _dbService.getChangesStream().listen((data) {
       _latestChangesData = data;
       _calculateLastModified();
+    }, onError: (error) {
+      _errorMessage = 'Viga muudatuste lugemisel: $error';
+      notifyListeners();
     });
   }
 
@@ -151,12 +158,17 @@ class DictionaryProvider with ChangeNotifier {
 
   Future<void> loadDictionary() async {
     _isLoading = true;
+    _errorMessage = ''; // Nullime vana vea
     notifyListeners();
     
-    _words = await _dbService.fetchAllWords(_currentLang);
-    
-    _isLoading = false;
-    notifyListeners();
+    try {
+      _words = await _dbService.fetchAllWords(_currentLang);
+    } catch (e) {
+      _errorMessage = 'Viga andmete laadimisel: $e'; // Püüame vea kinni!
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // Sõna salvestamine (uue või olemasoleva)
