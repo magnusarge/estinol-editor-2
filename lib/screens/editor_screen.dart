@@ -76,6 +76,16 @@ class _EditorScreenState extends State<EditorScreen> {
     return false;
   }
 
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+    final d = date.day.toString().padLeft(2, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final y = date.year;
+    final hr = date.hour.toString().padLeft(2, '0');
+    final min = date.minute.toString().padLeft(2, '0');
+    return '$d.$m.$y $hr:$min';
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DictionaryProvider>();
@@ -260,7 +270,7 @@ class _EditorScreenState extends State<EditorScreen> {
             Row(
               children: [
                 // TODO: Siia lisame hiljem viimase muudatuse aja andmebaasist
-                const Text('Viimati muudetud: -'),
+                Text('Viimati muudetud: ${_formatDate(provider.lastModifiedLang)}'),
                 const SizedBox(width: 16),
                 Icon(
                   _hasInternet ? Icons.wifi : Icons.wifi_off,

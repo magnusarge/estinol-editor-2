@@ -22,6 +22,16 @@ class DatabaseService {
     return allWords;
   }
 
+  // --- UUS: Reaalajas muudatuste kuulamine ---
+  Stream<Map<String, dynamic>> getChangesStream() {
+    return _db.collection('data').doc('changes').snapshots().map((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        return snapshot.data() as Map<String, dynamic>;
+      }
+      return {};
+    });
+  }
+
   Future<void> saveWord(String lang, Word word) async {
     // Faili nimi (dokument) on algvormi esimene täht
     String letter = word.algvorm.toLowerCase()[0];

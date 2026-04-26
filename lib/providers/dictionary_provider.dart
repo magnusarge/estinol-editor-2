@@ -43,6 +43,40 @@ class DictionaryProvider with ChangeNotifier {
   bool _hasUnsavedChanges = false;
   bool get hasUnsavedChanges => _hasUnsavedChanges;
 
+  // --- UUD VÄLJAD VIIMASE MUUDATUSE JAOKS ---
+  Map<String, dynamic> _latestChangesData = {};
+  DateTime? _lastModifiedLang;
+  DateTime? get lastModifiedLang => _lastModifiedLang;
+
+  // Konstruktor käivitab andmebaasi kuulamise kohe
+  DictionaryProvider() {
+    _initChangesListener();
+  }
+
+  void _initChangesListener() {
+    _dbService.getChangesStream().listen((data) {
+      _latestChangesData = data;
+      _calculateLastModified();
+    });
+  }
+
+  void _calculateLastModified() {
+    int maxTime = 0;
+    // Otsime praeguse keele kõige värskemat templit
+    _latestChangesData.forEach((key, value) {
+      if (key.startsWith('${_currentLang}_') && value is int) {
+        if (value > maxTime) maxTime = value;
+      }
+    });
+
+    if (maxTime > 0) {
+      _lastModifiedLang = DateTime.fromMillisecondsSinceEpoch(maxTime);
+    } else {
+      _lastModifiedLang = null;
+    }
+    notifyListeners();
+  }
+
   void setUnsavedChanges(bool value) {
     if (_hasUnsavedChanges != value) {
       _hasUnsavedChanges = value;
@@ -104,6 +138,7 @@ class DictionaryProvider with ChangeNotifier {
   Future<void> switchLanguage(String lang) async {
     _currentLang = lang;
     _selectedLetter = 'a'; // Resetib tähe
+    _calculateLastModified();
     await loadDictionary();
   }
 
