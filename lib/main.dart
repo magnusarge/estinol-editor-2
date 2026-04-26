@@ -32,28 +32,30 @@ class EstinolApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Sinu logo roosa tooni ligikaudne vaste
+    const Color estinolPink = Color(0xFFD874D8); 
+
     return MaterialApp(
       title: 'Estiñol Editor 2',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: estinolPink,
+          // Lisame natuke heledama tausta kogu äpile
+          surface: Colors.grey.shade50, 
+        ),
         useMaterial3: true,
       ),
-      // StreamBuilder jälgib reaalajas, kas kasutaja on sisse logitud või mitte
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
-          // Kui Firebase alles kontrollib staatust
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          
-          // Kui kasutaja on olemas, suuname pealehele, muidu sisselogimisse
           if (snapshot.hasData) {
             return const EditorScreen(); 
           }
-          
           return const LoginScreen();
         },
       ),
