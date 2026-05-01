@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../models/word.dart';
 import '../services/database_service.dart';
+import '../utils/string_utils.dart';
 
 class DictionaryProvider with ChangeNotifier {
   DictionaryProvider({DatabaseService? dbService, bool initChangesListener = true})
@@ -128,7 +129,14 @@ class DictionaryProvider with ChangeNotifier {
       // Kui algvorm on tühi (näiteks vigane andmebaasi rida), siis see tähtede alla ei ilmu
       return wordForm.isNotEmpty && wordForm.startsWith(targetLetter);
     }).toList()
-      ..sort((a, b) => a.algvorm.toString().compareTo(b.algvorm.toString()));
+      ..sort((a, b) {
+        final ak = StringUtils.sortKey(a.algvorm, lang: _currentLang);
+        final bk = StringUtils.sortKey(b.algvorm, lang: _currentLang);
+        final primary = ak.compareTo(bk);
+        if (primary != 0) return primary;
+        // Fallback: keep ordering stable for identical sort keys.
+        return a.algvorm.compareTo(b.algvorm);
+      });
   }
 
   // Statistika: Sõnu keeles kokku
