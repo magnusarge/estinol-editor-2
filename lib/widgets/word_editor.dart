@@ -254,7 +254,8 @@ class _WordEditorState extends State<WordEditor> {
                   Expanded(
                     child: TextField(
                       controller: _algvormController,
-                      enabled: isNew,
+                      readOnly: !isNew,
+                      enableInteractiveSelection: true,
                       decoration: const InputDecoration(labelText: 'Algvorm'),
                       onChanged: (val) {
                         if (isNew) {
@@ -263,19 +264,6 @@ class _WordEditorState extends State<WordEditor> {
                       },
                     ),
                   ),
-                  if (!isNew)
-                    IconButton(
-                      icon: const Icon(Icons.copy),
-                      tooltip: 'Kopeeri algvorm',
-                      onPressed: _algvormController.text.isEmpty
-                          ? null
-                          : () {
-                              Clipboard.setData(ClipboardData(text: _algvormController.text));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Algvorm kopeeritud')),
-                              );
-                            },
-                    ),
                 ],
               ),
             ),
@@ -283,7 +271,8 @@ class _WordEditorState extends State<WordEditor> {
             Expanded(
               child: TextField(
                 controller: _otsingVController,
-                enabled: false,
+                readOnly: true,
+                enableInteractiveSelection: true,
                 decoration: const InputDecoration(labelText: 'Otsinguvorm'),
               ),
             ),
