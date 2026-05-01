@@ -327,7 +327,11 @@ class _WordEditorState extends State<WordEditor> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     padding: const EdgeInsets.all(8),
-                    child: MarkdownBody(data: _sisuController.text),
+                    child: Scrollbar(
+                      child: SingleChildScrollView(
+                        child: MarkdownBody(data: _sisuController.text),
+                      ),
+                    ),
                   ),
                 ),
               ],
