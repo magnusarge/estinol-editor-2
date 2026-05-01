@@ -248,15 +248,35 @@ class _WordEditorState extends State<WordEditor> {
         Row(
           children: [
             Expanded(
-              child: TextField(
-                controller: _algvormController,
-                enabled: isNew,
-                decoration: const InputDecoration(labelText: 'Algvorm'),
-                onChanged: (val) {
-                  if (isNew) {
-                    _otsingVController.text = StringUtils.normalize(val);
-                  }
-                },
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _algvormController,
+                      enabled: isNew,
+                      decoration: const InputDecoration(labelText: 'Algvorm'),
+                      onChanged: (val) {
+                        if (isNew) {
+                          _otsingVController.text = StringUtils.normalize(val);
+                        }
+                      },
+                    ),
+                  ),
+                  if (!isNew)
+                    IconButton(
+                      icon: const Icon(Icons.copy),
+                      tooltip: 'Kopeeri algvorm',
+                      onPressed: _algvormController.text.isEmpty
+                          ? null
+                          : () {
+                              Clipboard.setData(ClipboardData(text: _algvormController.text));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Algvorm kopeeritud')),
+                              );
+                            },
+                    ),
+                ],
               ),
             ),
             const SizedBox(width: 16),
