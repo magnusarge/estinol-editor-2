@@ -1,10 +1,21 @@
 // lib/widgets/word_editor.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import '../models/word.dart';
 import '../providers/dictionary_provider.dart';
 import '../utils/string_utils.dart';
+
+enum _MarkdownAction { bold, italic }
+
+class _MarkdownIntent extends Intent {
+  const _MarkdownIntent(this.action);
+  const _MarkdownIntent.bold() : action = _MarkdownAction.bold;
+  const _MarkdownIntent.italic() : action = _MarkdownAction.italic;
+
+  final _MarkdownAction action;
+}
 
 class WordEditor extends StatefulWidget {
   const WordEditor({super.key});
@@ -193,8 +204,31 @@ class _WordEditorState extends State<WordEditor> {
     final provider = context.watch<DictionaryProvider>();
     final isNew = provider.isAddingNew;
 
-    return Column(
-      children: [
+    return Shortcuts(
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.keyB, control: true): _MarkdownIntent.bold(),
+        SingleActivator(LogicalKeyboardKey.keyI, control: true): _MarkdownIntent.italic(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _MarkdownIntent: CallbackAction<_MarkdownIntent>(
+            onInvoke: (intent) {
+              switch (intent.action) {
+                case _MarkdownAction.bold:
+                  _applyMarkdown('**', '**');
+                  break;
+                case _MarkdownAction.italic:
+                  _applyMarkdown('*', '*');
+                  break;
+              }
+              return null;
+            },
+          ),
+        },
+        child: Focus(
+          autofocus: true,
+          child: Column(
+            children: [
         // --- HOIATUS DUPLIKAADI KORRAL ---
         if (_isDuplicate)
           Container(
@@ -336,7 +370,10 @@ class _WordEditorState extends State<WordEditor> {
             ],
           ),
         ),
-      ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

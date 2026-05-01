@@ -4,7 +4,14 @@ import '../models/word.dart';
 import '../services/database_service.dart';
 
 class DictionaryProvider with ChangeNotifier {
-  final DatabaseService _dbService = DatabaseService();
+  DictionaryProvider({DatabaseService? dbService, bool initChangesListener = true})
+      : _dbService = dbService ?? DatabaseService() {
+    if (initChangesListener) {
+      _initChangesListener();
+    }
+  }
+
+  final DatabaseService _dbService;
 
   String _errorMessage = '';
   String get errorMessage => _errorMessage;
@@ -50,11 +57,6 @@ class DictionaryProvider with ChangeNotifier {
   Map<String, dynamic> _latestChangesData = {};
   DateTime? _lastModifiedLang;
   DateTime? get lastModifiedLang => _lastModifiedLang;
-
-  // Konstruktor käivitab andmebaasi kuulamise kohe
-  DictionaryProvider() {
-    _initChangesListener();
-  }
 
   void _initChangesListener() {
     // Lisame .listen külge onError käsitleja
